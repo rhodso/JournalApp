@@ -1,23 +1,30 @@
 package app;
 
 import java.awt.event.ActionEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.concurrent.locks.Condition;
+import java.util.Locale;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 
 public class mainLayout {
 
+    //UI components
     private JFrame mainFrame;
     private JLabel CurrentDateLabel;
     private JButton FirstButton;
@@ -32,6 +39,9 @@ public class mainLayout {
     private JButton SaveButton;
     private JScrollPane jScrollPane1;
     private JButton DatePicker;
+
+    //Vars
+    private Calendar workingDate;
 
     public mainLayout(){
         initComponents();
@@ -209,86 +219,204 @@ public class mainLayout {
 
         HeaderLabel.getAccessibleContext().setAccessibleName("Jounal Application");
         NavPanel.getAccessibleContext().setAccessibleName("NBavButton_Panel");
-
         mainFrame.getAccessibleContext().setAccessibleName("JournalApplication");
 
+        SaveButton.setVisible(false);
+        DatePicker.setVisible(false);
+
+        mainFrame.addWindowListener(new WindowAdapter(){
+            public void WindowClosing(WindowEvent e){
+                //Code goes here
+                saveFile(workingDate, JournalTextEntry.getText());
+                mainFrame.dispose();
+            }
+        });
+
         mainFrame.pack();
-    }// </editor-fold>                        
+        workingDate = Calendar.getInstance();
+        updateDateLabel(workingDate);
+        getFirstDate();
+        saveFile(workingDate, "");
+    }                     
 
     private void FirstButtonActionPerformed(ActionEvent evt) {                                            
         dateControler(-2);
     }                                           
-
     private void PreviousButtonActionPerformed(ActionEvent evt) {                                               
         dateControler(-1);
     }                                              
-
-    private void NextButtonActionPerformed(ActionEvent evt) {                                           
+    private void NextButtonActionPerformed(ActionEvent evt) {
         dateControler(1);
     }                                          
-
     private void LastButtonActionPerformed(ActionEvent evt) {                                           
         dateControler(2);
     }                                          
-
     private void SaveButtonActionPerformed(ActionEvent evt) {                                           
-        // TODO add your handling code here:
+        //Figure this out later
     }
-    
     private void DatePickerActionPerformed(java.awt.event.ActionEvent evt) {                                           
-        // TODO add your handling code here:
+        //Figure this out later
     }
 
     private void dateControler(int condition){
-        Calendar c = Calendar.getInstance();
+        //Save the current file
+        Calendar c = workingDate;
+        saveFile(c, JournalTextEntry.getText());
         switch(condition){
             case 1:
-                //Next day in sequence
+                c.add(Calendar.DAY_OF_YEAR, 1);
+                if(c.after(Calendar.getInstance())){
+                    c.add(Calendar.DAY_OF_YEAR, -1);
+                    JOptionPane.showMessageDialog(mainFrame, "Cannot create journal entry for future dates", "Error", JOptionPane.ERROR_MESSAGE);
+                }
                 break;
             case 2:
-                //Last day in sequence
+                //Last day in sequence should be today
+                c = Calendar.getInstance();
                 break;
             case -1:
-                //Previous day in sequence
+                c.add(Calendar.DAY_OF_YEAR, -1);
+                if(c.before(getFirstDate())){
+                    c.add(Calendar.DAY_OF_YEAR, 1);
+                    JOptionPane.showMessageDialog(mainFrame, "Cannot create jounrnal entry before first date. \nIf you know what you're doing then you can go ahead \nand fiddle with the file. If it breaks, then just delete the file.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
                 break;
             case -2:
-                //First day in sequence
+                    c = getFirstDate();
                 break;
             default:
                 //Do nothing
                 break;
         }
+        workingDate = c;
+        updateDateLabel(c);
+        updateTextArea(c);
     }
 
-    private String getFileContents(String filepath){
-        String contents = null;
-        File f = new File(filepath);
-        if(!f.exists()){
-            return null;
-        }
-        try (FileReader fr = new FileReader(f);
-            BufferedReader buffer = new BufferedReader(fr)) {
-                String line;
-                while ((line = buffer.readLine()) != null) {
-                    if (line.isEmpty()) {
-                        break;
-                    }
+    private Calendar getFirstDate(){
+        //Get the current date just in case it fails
+        Calendar c = Calendar.getInstance();
+        
+        //Try to get the date
+        String firstEntryDate = getFileContents("OtherFiles/firstDate.txt");
+        if(firstEntryDate.equals("!!FILEDOESNOTEXIST!!")){
+            File f = new File("OtherFiles/firstDate.txt");
+            try {
+                f.createNewFile();
+                int y, m, d;
+                y = c.get(Calendar.YEAR);
+                m = c.get(Calendar.MONTH);
+                d = c.get(Calendar.DAY_OF_MONTH);
+                m++;
+                String content = y + " " + m + " " + d;
+                try (BufferedWriter bw = new BufferedWriter(new FileWriter(f))) {
+                    bw.write(content);
                 }
-                contents = contents + line;
-        }
-        catch(IOException ex){
+
+            } catch (IOException e) {
+                JOptionPane.showMessageDialog(mainFrame, "An error occured when creating a file", "Error", JOptionPane.ERROR_MESSAGE);
+            }
 
         }
-        return contents;
+        else if(firstEntryDate.equals("!!IOEXCEPTION!!")){
+            JOptionPane.showMessageDialog(mainFrame, "An error occured when reading from firstDate.txt", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+        else{
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy MM dd", Locale.ENGLISH);
+            try {
+                c.setTime(sdf.parse(firstEntryDate));
+            } catch (ParseException e) {
+                JOptionPane.showMessageDialog(mainFrame, "An error occured when parsing a date", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+        return c;
     }
 
-    public void updateDateLabel(Calendar c){
+    private void saveFile(Calendar c, String content){
+        //Check if the content is null
+        if(content == null){
+            JOptionPane.showMessageDialog(mainFrame, "Content can't be null", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+        else{
+            //Content is good, get the filepath to save it to
+            String fp = "JournalFiles/";
+            int y, m, d;
+            y = c.get(Calendar.YEAR);
+            m = c.get(Calendar.MONTH);
+            m++;
+            d = c.get(Calendar.DAY_OF_MONTH);
+            fp = fp + y + "_" + m + "_" + d + ".txt";
+
+            File f = new File(fp);
+            try {
+                if(!f.exists()){ //If the file doens't exist, create it
+                    f.createNewFile();
+                }
+                else { //If the file DOES exist, then get rid and create it again so we can replace the content
+                    f.delete();
+                    f.createNewFile();
+                }
+                try (BufferedWriter bw = new BufferedWriter(new FileWriter(f))) {
+                    bw.write(content);
+                }
+            } catch (IOException e) {
+                JOptionPane.showMessageDialog(mainFrame, "An error occured when saving a file", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+            
+        }
+    }
+
+    private void updateDateLabel(Calendar c){
         String s = "Current entry date: ";
         int year = c.get(Calendar.YEAR);
         int month = c.get(Calendar.MONTH);
         int day = c.get(Calendar.DATE);
+        month++;
         s = s + " " + year + "/" + month + "/" + day;
         CurrentDateLabel.setText(s);
+    }
+
+    private void updateTextArea(Calendar c){
+        //Figure out what date the file is
+        String fp = "JournalFiles/";
+        int y, m, d;
+        y = c.get(Calendar.YEAR);
+        m = c.get(Calendar.MONTH);
+        d = c.get(Calendar.DAY_OF_MONTH);
+        m++;
+        fp = fp + y + "_" + m + "_" + d + ".txt";
+        
+        //Go get the content of that file
+        String SDateFileContent = getFileContents(fp);
+        if(SDateFileContent.equals("!!FILEDOESNOTEXIST!!") || SDateFileContent.equals("!!IOEXCEPTION!!")){
+            JOptionPane.showMessageDialog(mainFrame, "An error occured when reading from a file", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+        else{
+            //Set the file contents to the thing we got from getFileContents
+            JournalTextEntry.setText(SDateFileContent);
+        }
+    }
+
+    private String getFileContents(String filepath){
+        String contents = "";
+        File f = new File(filepath);
+        if(!f.exists()){
+            return "!!FILEDOESNOTEXIST!!";
+        }
+        try (FileReader fr = new FileReader(f);
+            BufferedReader buffer = new BufferedReader(fr)) {
+                String line = "";
+                while ((line = buffer.readLine()) != null) {
+                    if (line.isEmpty()) {
+                        break;
+                    }
+                    contents = contents + line;
+                }                
+        }
+        catch(IOException ex){
+            return "!!IOEXCEPTION!!";
+        }
+        return contents;
     }
 
     public void setVisibility(Boolean b){
