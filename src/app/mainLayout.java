@@ -225,10 +225,12 @@ public class mainLayout {
         DatePicker.setVisible(false);
 
         mainFrame.addWindowListener(new WindowAdapter(){
-            public void WindowClosing(WindowEvent e){
+            public void windowClosing(WindowEvent e){
                 //Code goes here
-                saveFile(workingDate, JournalTextEntry.getText());
+                formWindowClosing(e);
+                //saveFile(workingDate, JournalTextEntry.getText());
                 mainFrame.dispose();
+                System.exit(0);
             }
         });
 
@@ -236,7 +238,7 @@ public class mainLayout {
         workingDate = Calendar.getInstance();
         updateDateLabel(workingDate);
         getFirstDate();
-        saveFile(workingDate, "");
+        updateTextArea(workingDate);
     }                     
 
     private void FirstButtonActionPerformed(ActionEvent evt) {                                            
@@ -256,6 +258,9 @@ public class mainLayout {
     }
     private void DatePickerActionPerformed(java.awt.event.ActionEvent evt) {                                           
         //Figure this out later
+    }
+    private void formWindowClosing(WindowEvent e){
+        saveFile(workingDate, JournalTextEntry.getText());
     }
 
     private void dateControler(int condition){
@@ -303,6 +308,7 @@ public class mainLayout {
             File f = new File("OtherFiles/firstDate.txt");
             try {
                 f.createNewFile();
+                //c.add(Calendar.DAY_OF_YEAR, -1);
                 int y, m, d;
                 y = c.get(Calendar.YEAR);
                 m = c.get(Calendar.MONTH);
