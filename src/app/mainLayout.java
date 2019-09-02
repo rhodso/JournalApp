@@ -9,6 +9,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringReader;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -362,8 +364,11 @@ public class mainLayout {
                     f.delete();
                     f.createNewFile();
                 }
-                try (BufferedWriter bw = new BufferedWriter(new FileWriter(f))) {
-                    bw.write(content);
+                try (
+                    BufferedReader reader = new BufferedReader(new StringReader(content));
+                    PrintWriter writer = new PrintWriter(new FileWriter(f));
+                ) {
+                    reader.lines().forEach(line -> writer.println(line.replace("\n", "\\n")));
                 }
             } catch (IOException e) {
                 JOptionPane.showMessageDialog(mainFrame, "An error occured when saving a file", "Error", JOptionPane.ERROR_MESSAGE);
@@ -416,7 +421,7 @@ public class mainLayout {
                     if (line.isEmpty()) {
                         break;
                     }
-                    contents = contents + line;
+                    contents = contents + line + "\n";
                 }                
         }
         catch(IOException ex){
