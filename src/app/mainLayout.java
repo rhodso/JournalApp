@@ -11,9 +11,12 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringReader;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.List;
 import java.util.Locale;
 
 import javax.swing.JButton;
@@ -414,17 +417,14 @@ public class mainLayout {
         if(!f.exists()){
             return "!!FILEDOESNOTEXIST!!";
         }
-        try (FileReader fr = new FileReader(f);
-            BufferedReader buffer = new BufferedReader(fr)) {
-                String line = "";
-                while ((line = buffer.readLine()) != null) {
-                    if (line.isEmpty()) {
-                        break;
-                    }
-                    contents = contents + line + "\n";
-                }                
+        try{
+            List<String> lineList = Files.readAllLines(Paths.get(filepath));
+            
+            for(String line : lineList){
+                contents = contents + line + "\n";
+            }
         }
-        catch(IOException ex){
+        catch(IOException e){
             return "!!IOEXCEPTION!!";
         }
         return contents;
